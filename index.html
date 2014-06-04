@@ -29,17 +29,32 @@
                         0px  1px 0px #000000,
                         -1px  0px 0px #000000;
         }
+        .header {
+            text-align: right;
+            font-family: "Arial";
+            padding: 20px;
+            background-image:url('epfl_small.png');
+            background-repeat: no-repeat;
+            background-position: 20px 20px;
+        }
+        .instructions {
+            text-align: center;
+            padding: 0px 20px 0px 20px;
+        }
     </style>
 </head>
 
 <body> 
+    <h1 class="header">CHILI LAB<br/>Computer-Human Interaction for learning and instruction</h1>
+    <p class="instructions">Permetez votre navigateur l'accés à la caméra, et placez vos marqueurs en face d'elle, pour voir la coccinelle, sa maison et les obstacles</p>
+    <p class="instructions">Allow your browser to access the camera, and place your markers in front of them, to see the ladybug, its home and the obstacles</p>
     <canvas id="videoCanvas"  width="640" height="480" style="display:none;"></canvas>
     <div id="renderer"></div>
     <video id="webcam" autoplay style="display:none" width="640" height="480"></video>
     <div id="fps" class="info"></div>
     <input type="file" id="cameraConfiguration">
     <p>
-    <button onclick="changeRectify()">Rectify</button>
+    <button id="rectifyButton" onclick="changeRectify()">Rectify</button>
     </p>
 </body>
 <script>
@@ -210,6 +225,12 @@ function initVideoScene() {
 var maxAge = 5;
 var cubes = {};
 var infoTexts = {};
+
+var markerBug = undefined;
+var markerHole = undefined;
+
+
+
 function updateTransform(){
     for(var i in markers){
         var r = markers[i];
@@ -228,13 +249,59 @@ function updateTransform(){
             if(!cubes[i]){
                 var root = new THREE.Object3D();
                 root.matrixAutoUpdate = false;
+                
+                //original purple cubes
                 //var c = new THREE.Mesh(new THREE.CubeGeometry(27, 27, 27), new THREE.MeshBasicMaterial({color: 0x440044, opacity: 0.5, transparent: true}));
+                //c.position.x = 13.5;
+                //c.position.y = 13.5;
+                //c.position.z = -13.5;
+
+                if(typeof markerBug == 'undefined') markerBug = markers[i];
+                else if(typeof markerHole == 'undefined') markerHole = markers[i];
+
+                //3D model
 				//var c = new THREE.Mesh(loadedObjectGeometry, new THREE.MeshFaceMaterial( loadedObjectMaterials ));
-                var c = new THREE.Mesh(new THREE.CubeGeometry(27, 27, 27), new THREE.MeshPhongMaterial( { map: THREE.ImageUtils.loadTexture('crate.jpg') } ) );
-				c.position.x = 13.5;
-                c.position.y = 13.5;
-                c.position.z = -13.5;
-				//c.rotation.x = -Math.PI/2;
+
+                if(markers[i]==markerBug){
+                    var radius = 25;
+                    var widthSegments = 8;
+                    var heightSegments = 8;
+                    var sphere = new THREE.SphereGeometry( radius,  widthSegments, heightSegments, 0, Math.PI * 2, 0, Math.PI / 2 );
+                    var material = new THREE.MeshPhongMaterial( { map: THREE.ImageUtils.loadTexture('ladybug-texture-loq.jpg') } );
+                    var c = new THREE.Mesh( sphere, material );
+                    c.position.x = 15;
+                    c.position.y = 15;
+                    c.position.z = -8;
+                    c.rotation.x = -Math.PI/2;
+                    var sphere2 = new THREE.SphereGeometry( radius/4,  widthSegments, heightSegments, 0, Math.PI * 2, 0, Math.PI / 2 );
+                    var material2 = new THREE.MeshBasicMaterial({color: 0x000000});
+                    var c2 = new THREE.Mesh( sphere2, material2 );
+                    c2.position.x = 0;
+                    c2.position.y = 0;
+                    c2.position.z = -2;
+                    c2.rotation.x = -Math.PI/2;
+                    root.add(c2);
+                } else if(markers[i]==markerHole){
+                    //Ending (hole)
+                    var material = new THREE.MeshBasicMaterial({color: 0x000000});
+                    var radius = 25;
+                    var segments = 32;
+                    var height = 1
+                    var cylinder = new THREE.CylinderGeometry( radius, radius, height, segments );              
+                    var c = new THREE.Mesh( cylinder, material );
+                    c.position.x = 15;
+                    c.position.y = 15;
+                    c.position.z = -2;
+                    c.rotation.x = -Math.PI/2;
+                } else {
+                //boxes
+                    var c = new THREE.Mesh(new THREE.CubeGeometry(27, 27, 27), new THREE.MeshPhongMaterial( { map: THREE.ImageUtils.loadTexture('crate-loq.jpg') } ) );
+                    c.position.x = 13.5;
+                    c.position.y = 13.5;
+                    c.position.z = -13.5;
+                }
+
+
                 root.add(c);
                 scene.add(root);
                 cubes[i] = root;
@@ -256,7 +323,7 @@ function updateTransform(){
             var infoPos = toCanvasXYCoords(p, camera);
             infoTexts[i].style.left = infoPos.x + 'px';
             infoTexts[i].style.top = (infoPos.y - 100) + 'px';
-            infoTexts[i].style.display = "block";
+            //infoTexts[i].style.display = "block";
             infoTexts[i].childNodes[0].nodeValue = i;
         }
     }
@@ -303,6 +370,11 @@ function init() {
 }
 window.onload = function() {
     var fileInput = document.getElementById('cameraConfiguration');
+    fileInput.style.display = 'none';
+
+    var rectifyButton = document.getElementById('rectifyButton');
+    rectifyButton.style.display = 'none';
+
     fileInput.addEventListener('change', function(e) {
         //console.log(camera.projectionMatrix);
         Chilitags.setMarkerConfig(e.target.files[0]);
